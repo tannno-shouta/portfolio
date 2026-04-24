@@ -1,7 +1,7 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { HeroBlob } from "./HeroBlob";
+import { SkullScene } from "./SkullScene";
 
 export function Scene() {
   return (
@@ -11,8 +11,7 @@ export function Scene() {
       dpr={[1, 1.5]}
       gl={{ antialias: true, alpha: true }}
     >
-      <ambientLight intensity={0.2} />
-      <HeroBlob />
+      <SkullScene />
     </Canvas>
   );
 }
