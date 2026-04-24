@@ -3,7 +3,7 @@ import { Noto_Sans_JP, Zen_Kaku_Gothic_New, Inter } from "next/font/google";
 import "./globals.css";
 import { LenisProvider } from "@/components/scroll/LenisProvider";
 import { CustomCursor } from "@/components/cursor/CustomCursor";
-import { Scene } from "@/components/canvas/Scene";
+import { SceneClient } from "@/components/canvas/SceneClient";
 import { Header } from "@/components/layout/Header";
 import { PageTransitionOverlay } from "@/components/motion/PageTransition";
 
@@ -42,7 +42,7 @@ export default function RootLayout({
       >
         <LenisProvider>
           <CustomCursor />
-          <Scene />
+          <SceneClient />
           <Header />
           <PageTransitionOverlay />
           {children}

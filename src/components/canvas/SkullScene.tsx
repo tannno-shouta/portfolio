@@ -21,13 +21,13 @@ const SKULL_URL =
   "https://vazxmixjsiawhamofees.supabase.co/storage/v1/object/public/models/skull/model.gltf";
 
 // ---- Aura plane ----
-function SkullAura({ opacity }: { opacity: { current: number } }) {
+function SkullAura({ opacityRef }: { opacityRef: React.MutableRefObject<number> }) {
   const matRef = useRef<ShaderMaterial>(null);
 
   useFrame(({ clock }) => {
     if (!matRef.current) return;
     matRef.current.uniforms.uTime.value    = clock.getElapsedTime();
-    matRef.current.uniforms.uOpacity.value = opacity.current;
+    matRef.current.uniforms.uOpacity.value = opacityRef.current;
   });
 
   return (
@@ -51,14 +51,13 @@ function SkullAura({ opacity }: { opacity: { current: number } }) {
 }
 
 // ---- 360 particles ----
-function SkullParticles({ opacity }: { opacity: { current: number } }) {
+function SkullParticles({ opacityRef }: { opacityRef: React.MutableRefObject<number> }) {
   const matRef = useRef<ShaderMaterial>(null);
 
   const geo = useMemo(() => {
     const COUNT = 360;
     const positions: number[] = [];
     const randoms:   number[] = [];
-
     for (let i = 0; i < COUNT; i++) {
       const angle  = (i / COUNT) * Math.PI * 2;
       const radius = 1.4 + (Math.random() - 0.5) * 0.5;
@@ -66,7 +65,6 @@ function SkullParticles({ opacity }: { opacity: { current: number } }) {
       positions.push(Math.cos(angle) * radius, y, Math.sin(angle) * radius);
       randoms.push(Math.random());
     }
-
     const g = new BufferGeometry();
     g.setAttribute("position", new Float32BufferAttribute(positions, 3));
     g.setAttribute("aRandom",  new Float32BufferAttribute(randoms, 1));
@@ -76,7 +74,7 @@ function SkullParticles({ opacity }: { opacity: { current: number } }) {
   useFrame(({ clock }) => {
     if (!matRef.current) return;
     matRef.current.uniforms.uTime.value    = clock.getElapsedTime();
-    matRef.current.uniforms.uOpacity.value = opacity.current;
+    matRef.current.uniforms.uOpacity.value = opacityRef.current;
   });
 
   return (
@@ -118,83 +116,59 @@ function SkullParticles({ opacity }: { opacity: { current: number } }) {
 
 // ---- Skull mesh ----
 function SkullMesh({
-  dissolve,
-  auraOpacity,
-  particleOpacity,
+  dissolveRef,
+  auraOpacityRef,
+  particleOpacityRef,
 }: {
-  dissolve:        { current: number };
-  auraOpacity:     { current: number };
-  particleOpacity: { current: number };
+  dissolveRef:        React.MutableRefObject<number>;
+  auraOpacityRef:     React.MutableRefObject<number>;
+  particleOpacityRef: React.MutableRefObject<number>;
 }) {
   const { scene } = useGLTF(SKULL_URL);
   const groupRef  = useRef<Group>(null);
-  const matRef    = useRef<ShaderMaterial>(null);
-  const { camera, mouse } = useThree();
+  const matRef    = useRef<ShaderMaterial | null>(null);
+  const { mouse } = useThree();
 
-  // mouse tracking – lerped rotation
-  const targetRot = useRef(new Vector2(0, 0));
+  const targetRot  = useRef(new Vector2(0, 0));
   const currentRot = useRef(new Vector2(0, 0));
 
   useFrame(() => {
     if (!matRef.current || !groupRef.current) return;
+    matRef.current.uniforms.uDissolve.value = dissolveRef.current;
 
-    // update uniforms
-    matRef.current.uniforms.uDissolve.value = dissolve.current;
-
-    // mouse look
     targetRot.current.set(mouse.y * 0.3, mouse.x * 0.5);
     currentRot.current.lerp(targetRot.current, 0.06);
     groupRef.current.rotation.x = currentRot.current.x;
     groupRef.current.rotation.y = currentRot.current.y;
   });
 
-  // apply shader to every mesh in the GLTF
   useEffect(() => {
     const mat = new ShaderMaterial({
       vertexShader:   skullBodyVert,
       fragmentShader: skullBodyFrag,
       uniforms: {
-        uTime:    { value: 0 },
+        uTime:     { value: 0 },
         uDissolve: { value: 1.0 },
-        uHsv1:    { value: new Vector3(0.09, 0.70, 0.45) },
-        uHsv2:    { value: new Vector3(0.778, 0.11, 0.11) },
+        uHsv1:     { value: new Vector3(0.09, 0.70, 0.45) },
+        uHsv2:     { value: new Vector3(0.778, 0.11, 0.11) },
       },
     });
     matRef.current = mat;
 
     scene.traverse((child) => {
-      if ((child as Mesh).isMesh) {
-        (child as Mesh).material = mat;
-      }
+      if ((child as Mesh).isMesh) (child as Mesh).material = mat;
     });
 
-    // dissolve-in animation
-    gsap.to(dissolve, {
-      current: 0,
-      duration: 5,
-      delay: 0.5,
-      ease: "power2.inOut",
-    });
-    gsap.to(auraOpacity, {
-      current: 0.75,
-      duration: 1.5,
-      delay: 2.6,
-      ease: "power2.out",
-    });
-    gsap.to(particleOpacity, {
-      current: 1,
-      duration: 2,
-      delay: 4,
-      ease: "power2.out",
-    });
+    gsap.to(dissolveRef, { current: 0,    duration: 5,   delay: 0.5, ease: "power2.inOut" });
+    gsap.to(auraOpacityRef,     { current: 0.75, duration: 1.5, delay: 2.6, ease: "power2.out" });
+    gsap.to(particleOpacityRef, { current: 1,    duration: 2,   delay: 4,   ease: "power2.out" });
 
-    // uTime ticker (separate from dissolve)
-    const ticker = gsap.ticker.add((t) => {
+    const tickerId = gsap.ticker.add((t) => {
       if (mat.uniforms.uTime) mat.uniforms.uTime.value = t;
     });
 
     return () => {
-      gsap.ticker.remove(ticker as unknown as (t: number, dt: number, frame: number) => void);
+      gsap.ticker.remove(tickerId as unknown as (t: number, dt: number, frame: number) => void);
       mat.dispose();
     };
   }, [scene]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -206,23 +180,23 @@ function SkullMesh({
   );
 }
 
-// ---- orchestrator ----
-const dissolve        = { current: 1.0 };
-const auraOpacity     = { current: 0.0 };
-const particleOpacity = { current: 0.0 };
-
+// ---- root ----
 export function SkullScene() {
+  const dissolveRef        = useRef(1.0);
+  const auraOpacityRef     = useRef(0.0);
+  const particleOpacityRef = useRef(0.0);
+
   return (
     <>
-      <SkullAura opacity={auraOpacity} />
+      <SkullAura     opacityRef={auraOpacityRef} />
       <Suspense fallback={null}>
         <SkullMesh
-          dissolve={dissolve}
-          auraOpacity={auraOpacity}
-          particleOpacity={particleOpacity}
+          dissolveRef={dissolveRef}
+          auraOpacityRef={auraOpacityRef}
+          particleOpacityRef={particleOpacityRef}
         />
       </Suspense>
-      <SkullParticles opacity={particleOpacity} />
+      <SkullParticles opacityRef={particleOpacityRef} />
     </>
   );
 }
