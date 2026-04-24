@@ -6,6 +6,7 @@ import { CustomCursor } from "@/components/cursor/CustomCursor";
 import { SceneClient } from "@/components/canvas/SceneClient";
 import { Header } from "@/components/layout/Header";
 import { PageTransitionOverlay } from "@/components/motion/PageTransition";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const notoSansJP = Noto_Sans_JP({
   variable: "--font-noto-sans-jp",
@@ -40,13 +41,15 @@ export default function RootLayout({
       <body
         className={`${notoSansJP.variable} ${zenKakuGothicNew.variable} ${inter.variable} cursor-none bg-[#0a0a0a]`}
       >
-        <LenisProvider>
-          <CustomCursor />
-          <SceneClient />
-          <Header />
-          <PageTransitionOverlay />
-          {children}
-        </LenisProvider>
+        <ErrorBoundary>
+          <LenisProvider>
+            <CustomCursor />
+            <SceneClient />
+            <Header />
+            <PageTransitionOverlay />
+            {children}
+          </LenisProvider>
+        </ErrorBoundary>
       </body>
     </html>
   );
